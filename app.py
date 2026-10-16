@@ -19,36 +19,64 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Initialize Firebase
 import json
+import sys
+
+print("="*60)
+print("Starting Firebase initialization...")
+print("="*60)
 
 # Load Firebase credentials from environment variable
 firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
+
 if firebase_creds_json:
+    print("✓ Environment variable found")
     try:
+        # Parse JSON
         cred_dict = json.loads(firebase_creds_json)
+        print(f"✓ JSON parsed successfully")
+        print(f"✓ Project ID: {cred_dict.get('project_id', 'N/A')}")
         
-        # Fix escaped newlines in private_key if present
-        if 'private_key' in cred_dict:
-            # Replace \\n with actual newlines
-            cred_dict['private_key'] = cred_dict['private_key'].replace('\\\\n', '\n')
+        # Fix escaped newlines in private_key
+        if 'private_key' in cred_dict and isinstance(cred_dict['private_key'], str):
+            original_len = len(cred_dict['private_key'])
+            # Replace escaped newlines with actual newlines
+            cred_dict['private_key'] = cred_dict['private_key'].replace('\\\\n', '\n').replace('\\n', '\n')
+            print(f"✓ Private key processed (length: {original_len} -> {len(cred_dict['private_key'])})")
         
+        # Initialize Firebase
         cred = credentials.Certificate(cred_dict)
-        print("✅ Firebase credentials loaded from environment variable")
+        firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        
+        print("✅ Firebase initialized successfully!")
+        print("="*60)
+        
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON parsing error: {e}")
+        print(f"Environment variable content (first 100 chars): {firebase_creds_json[:100]}")
+        sys.exit(1)
     except Exception as e:
-        print(f"❌ Error loading Firebase credentials: {e}")
-        raise
+        print(f"❌ Firebase initialization error: {e}")
+        print(f"Error type: {type(e).__name__}")
+        sys.exit(1)
 else:
-    # Local development fallback
+    print("❌ FIREBASE_CREDENTIALS_JSON environment variable not found!")
+    print("Available environment variables:")
+    for key in os.environ.keys():
+        if 'FIREBASE' in key.upper():
+            print(f"  - {key}")
+    
+    # Try local file as fallback
+    print("\nTrying local serviceAccountKey.json...")
     try:
         cred = credentials.Certificate('serviceAccountKey.json')
-        print("✅ Firebase credentials loaded from local file")
+        firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        print("✅ Firebase initialized from local file")
     except FileNotFoundError:
-        print("❌ ERROR: Firebase credentials not found!")
-        print("Please set FIREBASE_CREDENTIALS_JSON environment variable")
-        raise
-
-firebase_admin.initialize_app(cred)
-db = firestore.client()
-print("✅ Firebase initialized successfully")
+        print("❌ Local serviceAccountKey.json not found either!")
+        print("Please set FIREBASE_CREDENTIALS_JSON environment variable in Render")
+        sys.exit(1)
 
 # ============================================================================
 # VIRTUAL AGENTS CONFIG
