@@ -19,22 +19,27 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Initialize Firebase
 import json
+import base64
 
-# Try to load from /etc/secrets/ (Render Secret Files) or fallback to file
-try:
-    # Render Secret Files location
-    with open('/etc/secrets/serviceAccountKey.json', 'r') as f:
-        cred_dict = json.load(f)
-    cred = credentials.Certificate(cred_dict)
-except FileNotFoundError:
-    # Fallback to environment variable
-    firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
-    if firebase_creds:
-        cred_dict = json.loads(firebase_creds)
+# Load Firebase credentials from environment variable (Base64 encoded)
+firebase_creds_b64 = os.environ.get('FIREBASE_CREDENTIALS_BASE64')
+if firebase_creds_b64:
+    try:
+        # Decode Base64
+        firebase_creds_json = base64.b64decode(firebase_creds_b64).decode('utf-8')
+        cred_dict = json.loads(firebase_creds_json)
         cred = credentials.Certificate(cred_dict)
-    else:
-        # Local development fallback
+    except Exception as e:
+        print(f"Error loading Firebase credentials: {e}")
+        raise
+else:
+    # Local development fallback
+    try:
         cred = credentials.Certificate('serviceAccountKey.json')
+    except FileNotFoundError:
+        print("ERROR: Firebase credentials not found!")
+        print("Please set FIREBASE_CREDENTIALS_BASE64 environment variable")
+        raise
 
 firebase_admin.initialize_app(cred)
 db = firestore.client()
