@@ -19,30 +19,30 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Initialize Firebase
 import json
-import base64
 
-# Load Firebase credentials from environment variable (Base64 encoded)
-firebase_creds_b64 = os.environ.get('FIREBASE_CREDENTIALS_BASE64')
-if firebase_creds_b64:
+# Load Firebase credentials from environment variable
+firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
+if firebase_creds_json:
     try:
-        # Decode Base64
-        firebase_creds_json = base64.b64decode(firebase_creds_b64).decode('utf-8')
         cred_dict = json.loads(firebase_creds_json)
         cred = credentials.Certificate(cred_dict)
+        print("✅ Firebase credentials loaded from environment variable")
     except Exception as e:
-        print(f"Error loading Firebase credentials: {e}")
+        print(f"❌ Error loading Firebase credentials: {e}")
         raise
 else:
     # Local development fallback
     try:
         cred = credentials.Certificate('serviceAccountKey.json')
+        print("✅ Firebase credentials loaded from local file")
     except FileNotFoundError:
-        print("ERROR: Firebase credentials not found!")
-        print("Please set FIREBASE_CREDENTIALS_BASE64 environment variable")
+        print("❌ ERROR: Firebase credentials not found!")
+        print("Please set FIREBASE_CREDENTIALS_JSON environment variable")
         raise
 
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+print("✅ Firebase initialized successfully")
 
 # ============================================================================
 # VIRTUAL AGENTS CONFIG
