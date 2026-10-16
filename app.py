@@ -25,6 +25,12 @@ firebase_creds_json = os.environ.get('FIREBASE_CREDENTIALS_JSON')
 if firebase_creds_json:
     try:
         cred_dict = json.loads(firebase_creds_json)
+        
+        # Fix escaped newlines in private_key if present
+        if 'private_key' in cred_dict:
+            # Replace \\n with actual newlines
+            cred_dict['private_key'] = cred_dict['private_key'].replace('\\\\n', '\n')
+        
         cred = credentials.Certificate(cred_dict)
         print("✅ Firebase credentials loaded from environment variable")
     except Exception as e:
