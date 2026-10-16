@@ -20,13 +20,21 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Initialize Firebase
 import json
 
-# Try environment variable first, fallback to file
-firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
-if firebase_creds:
-    cred_dict = json.loads(firebase_creds)
+# Try to load from /etc/secrets/ (Render Secret Files) or fallback to file
+try:
+    # Render Secret Files location
+    with open('/etc/secrets/serviceAccountKey.json', 'r') as f:
+        cred_dict = json.load(f)
     cred = credentials.Certificate(cred_dict)
-else:
-    cred = credentials.Certificate('serviceAccountKey.json')
+except FileNotFoundError:
+    # Fallback to environment variable
+    firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
+    if firebase_creds:
+        cred_dict = json.loads(firebase_creds)
+        cred = credentials.Certificate(cred_dict)
+    else:
+        # Local development fallback
+        cred = credentials.Certificate('serviceAccountKey.json')
 
 firebase_admin.initialize_app(cred)
 db = firestore.client()
